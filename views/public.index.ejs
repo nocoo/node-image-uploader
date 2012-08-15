@@ -1,0 +1,384 @@
+
+<!--
+	t-mac
+	@author Zheng Li <lizheng@lizheng.me>
+	@license MIT
+	@version 0.1.0
+-->
+<div class="container p-index">
+	<div class="toolbar">
+		<a class="btn btn-warning" href="./upload"><i class="icon-upload icon-white"></i> 创造历史</a>
+		<a class="btn btn-info btn-filter-module" href="#"><i class="icon-check icon-white"></i> 模块筛选</a>
+		<a class="btn btn-info btn-filter-time" href="#"><i class="icon-cog icon-white"></i> 时光隧道</a>
+		<div class="clear"></div>
+	
+		<ul class="nav nav-tabs">
+			<li class="active"><a href="#" rel="null">最近张贴</a></li>
+			<li><a href="#" rel="category1">分类1</a></li>
+			<li><a href="#" rel="category2">分类2</a></li>
+			<li><a href="#" rel="category3">分类3</a></li>
+			<li><a href="#" rel="category4">分类4</a></li>
+			<li><a href="#" rel="category5">分类5</a></li>
+			<li><a href="#" rel="category6">分类6</a></li>
+		</ul>
+
+		<div class="filter">
+			<h2>筛选器</h2>
+			<ul class="apps module cloud">
+				<li class="item-01" rel="m1">模块1</li>
+				<li class="item-02" rel="m2">模块2</li>
+				<li class="item-03" rel="m3">模块3</li>
+				<li class="item-04" rel="m4">模块4</li>
+				<li class="item-05" rel="m5">模块5</li>
+				<li class="item-06" rel="m6">模块6</li>
+				<li class="item-07" rel="m7">模块7</li>
+				<div class="clear"></div>
+			</ul>
+			<div class="time">
+				<select id="select_year" class="span2">
+					<option value="2012">2012年</option>
+					<option value="2011">2011年</option>
+					<option value="2010">2010年</option>
+				</select>
+				<select id="select_season" class="span2">
+					<option value="s1">春季</option>
+					<option value="s2">夏季</option>
+					<option value="s3">秋季</option>
+					<option value="s4">冬季</option>
+				</select>
+			</div>
+			<div class="action">
+				<a class="btn btn-info btn-filter-confirm" href="#"><i class="icon-cog icon-white"></i> 筛选</a>
+				<a class="btn btn-filter-cancel" href="#"><i class="icon-remove-sign"></i> 取消</a>
+				<div class="clear"></div>
+			</div>
+		</div>
+	</div>
+	<table class="waterfall"></table>
+	<div class="clear"></div>
+	<div class="loader">
+		<p>Loading....</p>
+	</div>
+</div>
+<%- partial('part.scripts.ejs') %>
+<script>
+	;(function($) {
+		$(document).ready(function() {
+			$('.nav-tabs li a').on('click', function(evt) {
+				$('.nav-tabs li').removeClass('active');
+				$(evt.target).parent().addClass('active');
+
+				makeMode('normal');
+				requestTimeline($(evt.target).attr('rel'));
+				return false;
+			});
+
+			var box_width = 242, box_margin_x = 20, box_margin_y = 5, columns = 3, last_init = -1, timer;
+			var map = [], images = [], speed = 150, mode = 'normal', group_num = 0;
+			var last_id = -1, current_category = 'null', current_time = [ 'null' ], current_module = [ 'null' ], is_loading = false, is_done = false;
+
+			var module_dictionary = { 
+				'm1': '模块1', 'm2': '模块2', 'm3': '模块3', 'm4': '模块4', 'm5': '模块5', 'm6': '模块6', 'm7': '模块7'
+			};
+
+			var category_dictionary = { 
+				'category1': '分类1', 'category2': '分类2', 'category3': '分类3', 'category4': '分类4', 'category5': '分类5', 'category6': '分类6', 'category7': '分类7'
+			};
+
+			var init = function() {
+				var tmp = images;
+				images = [];
+				$('.waterfall').html('');
+
+				columns = Math.floor($('.waterfall').width() / (box_width + box_margin_x));
+				//console.log('init: ' + columns);
+				//console.log('images: ' + images.length);
+
+				var html = [ '<tr>' ];
+				for(var i = 0; i < columns; ++i) {
+					html.push('<td id="c_' + i + '"></td>');
+				}
+				html.push('</tr>');
+
+				$('.waterfall').html(html.join(''));
+				appendImages(tmp);
+			};
+
+			$(window).resize(function() {
+				clearTimeout(timer);
+
+				var check = function() {
+					if((new Date()).getTime() - last_init > 20) {
+						init();
+						last_init = (new Date()).getTime();
+					}
+				};
+
+				timer = setTimeout(check, 100);
+			});
+
+			var makeTime = function(d) {
+				var date;
+				if(d) { date = d; } 
+				else { date = new Date(); }
+				
+				var yyyy = date.getFullYear(),
+					mm = (date.getMonth() + 1) < 10 ? '0' + (date.getMonth() + 1) : (date.getMonth() + 1),
+					dd = date.getDate() < 10 ? '0' + date.getDate() : date.getDate(),
+					hh = date.getHours() < 10 ? '0' + date.getHours() : date.getHours(),
+					min = date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes(),
+					ss = date.getSeconds() < 10 ? '0' + date.getSeconds() : date.getSeconds();
+						
+				return yyyy + '-' + mm + '-' + dd + ' ' + hh + ':' + min + ':' + ss;
+			};
+
+			var join = function(target, dictionary, seperator) {
+				var temp = [];
+				for(var i = 0; i < target.length; ++i) {
+					temp.push(dictionary[target[i]]);
+				}
+
+				return temp.join(seperator);
+			};
+
+			var makeSeason = function(time) {
+				var seasons = { 's1': '春季', 's2': '夏季', 's3': '秋季', 's4': '冬季' };
+
+				if(!time || time.length !== 2 || time[0] === 'unknown') {
+					return '未定义';
+				}
+
+				return time[0] + '年' + seasons[time[1]];
+			};
+
+			var appendImages = function(tmp) {
+				var column, current = images.length, description;
+				
+
+				if(!tmp) return;
+
+				for(i = 0; i < tmp.length; ++i) {
+					html = [];
+
+					//console.log(tmp[i].meta.group);
+
+					description = 
+						tmp[i].meta.title + ', ' + '时间: ' + makeSeason(tmp[i].meta.date) + ', ' + 
+						'DPI: ' + tmp[i].meta.dpi.join(', ') + ', ' + 
+						'分类: ' + join(tmp[i].meta.category, category_dictionary, ', ') + ', ' + 
+						'模块: ' + join(tmp[i].meta.module, module_dictionary, ', ') + '';
+
+					html.push('<div class="box"><a class="fancybox" rel="' + tmp[i].meta.group + '"" title="' + description + '" href="' + tmp[i]['original'] + '">');
+					html.push('<img src="' + tmp[i]['thumbnail'] + '" /></a>');
+					html.push('<div class="info">');
+					html.push('<p class="title">' + tmp[i].meta.title + ' ' + tmp[i].meta.dpi.join(', ') + '<i class="icon icon-info-sign"></i></p>');
+					html.push('<p class="extra">张贴于: ' + makeTime(new Date(tmp[i].meta.create)) + '</p>');
+
+					if(tmp[i].meta.category && tmp[i].meta.category.length > 0) {
+						html.push('<p class="extra">分类: ' + join(tmp[i].meta.category, category_dictionary, ', ') + '</p>');
+					}
+
+					if(tmp[i].meta.module && tmp[i].meta.module.length > 0) {
+						html.push('<p class="extra">模块: ' + join(tmp[i].meta.module, module_dictionary, ', ') + '</p>');
+					}
+					
+					html.push('<p class="extra">操作: <a href="#" class="a-hide" rel="' + tmp[i].meta['_id'] + '|' + tmp[i].meta.guid + '">隐藏图片</a></p>');
+
+					html.push('</div></div>');
+					column = $('#c_' + (current + i) % columns);
+					column.append(html.join(''));
+
+					$('.a-hide').off('click');
+					$('.a-hide').on('click', function(evt) {
+						evt.preventDefault();
+						//console.log($(this).attr('rel'));
+
+						var reason = prompt('请输入隐藏该图片的原因'), tmp = $(this).attr('rel').split('|'), box = $(this).parent().parent().parent();
+
+						if(tmp.length !== 2) return false;
+
+						if(reason) {
+							$.post('./api/hide', { 'id': tmp[0], 'guid': tmp[1], 'reason': reason }, function(data) {
+								$(box).hide('fast');
+							});
+						}
+
+						return false;
+					});
+
+					images.push(tmp[i]);
+				}
+
+				$('.waterfall div.box div.info p').off('click');
+				$('.waterfall div.box div.info p').on('click', function(evt) {
+					var parent = $(this).parent(), target_h = parent.hasClass('large') ? 0 : 18;
+
+					parent.find('p.extra').animate({
+						'height': target_h + 'px'
+					}, speed);
+
+					parent.toggleClass('large');
+				});
+
+				$('.fancybox').fancybox();
+			};
+
+			var requestTimeline = function(category, time, module, is_new) {
+				if(category !== current_category || is_new) {
+					for(var i = 0; i < columns; ++i) {
+						$('#c_' + i).html('');
+					}
+
+					images = [];
+					current_category = category;
+					last_id = -1;
+				}
+
+				var url = [ './api/images/timeline/' + category + '/' + last_id ];
+
+				if(time) {
+					url.push('/' + time);
+				} else {
+					url.push('/null');
+				}
+
+				if(module) {
+					url.push('/' + module);
+				} else {
+					url.push('/null');
+				}
+
+				//console.log(url.join(''));
+				is_loading = true;
+				$.getJSON(url.join(''), function(data) {
+					if(data && data.images) {
+						var tmp = [], image;
+						var row, html = [];
+
+						//console.log('return ' + data.images.length + ' image sets');
+
+						for(var i = 0; i < data.images.length; ++i) {
+							row = data.images[i];
+							last_id = row['_id'];
+
+							group_num++;
+
+							for(var j = 0; j < row.files.length; ++j) {
+								if(row.files[j].status === 'hide') continue;
+
+								image = {
+									'thumbnail': row.files[j]['thumbnail'],
+									'original': row.files[j]['original'],
+									'meta': {
+										'title': row.title,
+										'category': row.category,
+										'date': row.date,
+										'dpi': row.dpi,
+										'create': row.create,
+										'module': row.module,
+										'status': row.files[j].status,
+										'guid': row.files[j].guid,
+										'_id': row['_id'],
+										'group': 'group' + group_num
+									}
+								};
+
+								tmp.push(image);
+							}
+						}
+
+						if(data.images.length == 0) {
+							is_done = true;
+							setTimeout(function() { is_done = false; }, 5000);
+						} else {
+							is_done = false;
+						}
+
+						//console.log(is_done);
+					}
+
+					setTimeout(function() { 
+						is_loading = false;
+						$('.loader').hide('fast');
+					}, 500);
+
+					appendImages(tmp);
+				});
+			};
+
+			$(window).on('scroll', function(evt) {
+				if(is_loading || is_done) return false;
+				if($(window).scrollTop() + $(window).height() + 100 > $('.waterfall').height()) {
+					requestTimeline(current_category, current_time, current_module);
+					$('.loader').show('fast');
+				}
+			});
+
+			var makeMode = function(new_mode) {
+				if(new_mode === mode) {
+					$('.filter').hide('fast');
+					mode = 'normal';
+					current_time = [ 'null' ];
+					current_module = [ 'null' ];
+
+					return;
+				}
+
+				switch(mode) {
+					case 'normal': {
+						$('.filter .time, .filter .module').hide();
+						$('.filter .' + new_mode).show();
+						$('.filter').show('fast');
+
+						break;
+					}
+					case 'time':
+					case 'module': {
+						if(new_mode === 'normal') {
+							$('.filter').hide('fast');
+							current_time = [ 'null' ];
+							current_module = [ 'null' ];
+						} else {
+							$('.filter .time, .filter .module').hide();
+							$('.filter .' + new_mode).show();
+						}
+
+						break;
+					}
+				}
+
+				mode = new_mode;
+			};
+
+			$('.filter ul.apps li').on('click', function(evt) {
+				$(evt.target).toggleClass('selected');
+				return false;
+			});
+
+			$('.btn-filter-module').on('click', function() { makeMode('module'); });
+			$('.btn-filter-time').on('click', function() { makeMode('time'); });
+			$('.btn-filter-cancel').on('click', function() { makeMode('normal'); });
+			
+			$('.btn-filter-confirm').on('click', function() {
+				if(mode === 'normal') return;
+
+				var time = [ 'null' ], module = [ 'null' ];
+
+				if(mode === 'time') {
+					time = [ $('#select_year').attr('value'), $('#select_season').attr('value') ];
+				} else if(mode === 'module') {
+					module = [];
+					$('.filter .apps li.selected').each(function(index) { module.push($(this).attr('rel')); });
+				}
+
+				//console.log(time);
+				//console.log(module);
+
+				requestTimeline(current_category, time.join('-'), module.join('-'), true)
+			});
+
+			init();
+			requestTimeline(current_category, current_time, current_module);
+		});
+	})(jQuery);
+</script>

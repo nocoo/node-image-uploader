@@ -1,0 +1,210 @@
+<!--
+	t-mac
+	@author Zheng Li <lizheng@lizheng.me>
+	@license MIT
+	@version 0.1.0
+-->
+<div class="container p-upload">
+	<form class="form-horizontal">
+		<fieldset>
+			<div class="control-group">
+				<label class="control-label" for="input01">题目</label>
+				<div class="controls">
+					<input type="text" class="input-xlarge" id="input_title" placeholder="分享图片"></input>
+					<p class="help-inline">图片有名字咩？会显示在图片下方。</p>
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="input01">选择分类</label>
+				<div class="controls">
+					<ul class="cloud cloud-category">
+						<li class="item-category1" rel="category1">分类1</li>
+						<li class="item-category2" rel="category2">分类2</li>
+						<li class="item-category3" rel="category3">分类3</li>
+						<li class="item-category4" rel="category4">分类4</li>
+						<li class="item-category5" rel="category5">分类5</li>
+						<li class="item-category6" rel="category6">分类6</li>
+						<div class="clear"></div>
+					</ul>
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="input01">选择模块</label>
+				<div class="controls">
+					<ul class="cloud apps">
+						<li class="item-01" rel="m1">模块1</li>
+						<li class="item-02" rel="m2">模块2</li>
+						<li class="item-03" rel="m3">模块3</li>
+						<li class="item-04" rel="m4">模块4</li>
+						<li class="item-05" rel="m5">模块5</li>
+						<li class="item-06" rel="m6">模块6</li>
+						<li class="item-07" rel="m7">模块7</li>
+						<div class="clear"></div>
+					</ul>
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="input01">选择分辨率</label>
+				<div class="controls">
+					<ul class="cloud cloud-dpi">
+						<li class="item-hdpi" rel="hdpi">HDPI</li>
+						<li class="item-mdpi" rel="mdpi">MDPI</li>
+						<li class="item-xhdpi" rel="xhdpi">XHDPI</li>
+						<div class="clear"></div>
+					</ul>
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="input01">日期</label>
+				<div class="controls">
+					<select id="select_year" class="span2">
+						<option value="2012">2012年</option>
+						<option value="2011">2011年</option>
+						<option value="2010">2010年</option>
+					</select>
+					<select id="select_season" class="span2">
+						<option value="s1">春季</option>
+						<option value="s2">夏季</option>
+						<option selected="selected" value="s3">秋季</option>
+						<option value="s4">冬季</option>
+					</select>
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="input01">上传图片</label>
+				<div class="controls">
+					<div class="uploader">
+						<p class="step1">请将欲上传的图片拖拽到此区域中。可以一次性拖入多张图片一并上传噢，八过别拖太多，会卡的...</p>
+						<p class="step2">丢在这里就好了~只支持PNG和JPG图片噢。</p>
+					</div>
+					<ol class="filelist"></ol>
+				</div>
+			</div>
+			<div class="form-actions">
+            	<button type="submit" class="btn btn-primary" disabled="disabled"><i class="icon-upload icon-white"></i> 上传</button>
+          	</div>
+        </fieldset>
+    </form>
+</div>
+<%- partial('part.scripts.ejs') %>
+<script>
+	;(function($) {
+		$(document).ready(function() {
+			var files = [];
+
+			$('.cloud li').on('click', function(evt) {
+				$(evt.target).toggleClass('selected');
+				return false;
+			});
+
+			$('.apps li').on('click', function(evt) {
+				$(evt.target).parent().toggleClass('selected');
+				return false;
+			});
+
+			$('body').on('drop', function(evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+
+				$('.uploader').removeClass('over');
+			});
+			$('body').on('mouseleave', function(evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+
+				$('.uploader').removeClass('over');
+			});
+
+			$('.uploader').on('dragleave', function(evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+
+				var rect = this.getBoundingClientRect();
+				if(evt.x > rect.left + rect.width || evt.x < rect.left || evt.y > rect.top + rect.height || evt.y < rect.top) {
+					$('.uploader').removeClass('over');
+				}
+			});
+			$('.uploader').on('dragenter', function(evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+			});
+			$('.uploader').on('dragover', function(evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+				$('.uploader').addClass('over');
+			});
+			$('.uploader').on('drop', function(evt) {
+				evt.preventDefault();
+				evt.stopPropagation();
+				$('.uploader').removeClass('over');
+				
+				//files = [];
+				var tmp = evt.originalEvent.dataTransfer.files, html = [];
+				for(var i = 0; i < tmp.length; ++i) {
+					if(tmp[i]['type'] !== 'image/png' && tmp[i]['type'] !== 'image/jpeg') {
+						continue;
+					}
+					else {
+						files.push(tmp[i]);
+					}
+
+					html.push('<li>');
+					html.push('<span class="title"><i class="icon-file"></i> ' + tmp[i]['name'] + '</span>');
+					html.push('<span class="size"> ' + tmp[i]['size'] + ' Bytes</span>');
+					html.push('<span class="date"> ' + tmp[i]['lastModifiedDate'] + '</span>');
+					html.push('</li>');
+
+				}
+
+				$('.filelist').append(html.join(''));
+				//$('.uploader').hide();
+
+				$('.form-horizontal .form-actions button').removeAttr('disabled');
+			});
+
+			$('.form-horizontal').on('submit', function() {
+				var data = {
+					'title': $('#input_title').attr('value') || '分享图片',
+					'category': [],
+					'module': [],
+					'dpi': [],
+					'date': []
+				};
+
+				$('.form-horizontal .form-actions button').attr('disabled', 'disabled');
+
+				$('.cloud-category li.selected').each(function(index) { data.category.push($(this).attr('rel')); });
+				$('.apps li.selected').each(function(index) { data.module.push($(this).attr('rel')); });
+				$('.cloud-dpi li.selected').each(function(index) { data.dpi.push($(this).attr('rel')); });
+				data.date.push($('#select_year').attr('value'));
+				data.date.push($('#select_season').attr('value'));
+				
+				xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = function() { 
+					if (xhr.readyState == 4 && xhr.status == 200) {
+						alert('上传成功啦~');
+						window.location = './';
+					}
+				};
+
+				xhr.open("post", "./api/upload", true);
+				xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+				xhr.addEventListener("load", function(e) {
+					$('.uploader').removeClass('over');
+				}, false);
+
+				var fd = new FormData();
+
+				fd.append('payload', JSON.stringify(data));
+
+				for(var i = 0; i < files.length; ++i) {
+					fd.append('file', files[i]);
+				}
+				
+				xhr.send(fd);
+
+				return false;
+			});
+		});
+	})(jQuery);
+</script>

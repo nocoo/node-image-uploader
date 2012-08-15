@@ -1,0 +1,14 @@
+{
+    "name": "t-mac",
+    "version": "0.1.0",
+    "private": false,
+    "scripts": {
+      "start": "node app"
+    },
+    "dependencies": {
+      "express"    : "2.5.11",
+      "ejs"        : ">=0.7.1",
+      "mongodb"    : ">=1.1.1",
+      "imagemagick": ">=0.1.2"
+    }
+}

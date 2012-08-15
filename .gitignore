@@ -12,4 +12,7 @@ logs
 results
 
 node_modules
+tmp/*
+public/uploads/*
 npm-debug.log
+.DS_Store
